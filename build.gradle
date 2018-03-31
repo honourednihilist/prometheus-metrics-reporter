@@ -1,0 +1,149 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+
+    dependencies {
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.0'
+    }
+}
+
+group = 'com.github.honourednihilist'
+
+apply plugin: 'java'
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
+compileJava {
+    options.encoding = 'UTF-8'
+}
+
+compileTestJava {
+    options.encoding = 'UTF-8'
+}
+
+repositories {
+    jcenter()
+    mavenCentral()
+}
+
+dependencies {
+    compile(group: 'io.prometheus', name: 'simpleclient_dropwizard', version: '0.3.0')
+    compile(group: 'io.prometheus', name: 'simpleclient_httpserver', version: '0.3.0')
+    compile(group: 'io.prometheus', name: 'simpleclient_pushgateway', version: '0.3.0')
+
+    testCompile(group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.1.0')
+    testCompile(group: 'org.hamcrest', name: 'hamcrest-all', version: '1.3')
+    testCompile(group: 'org.mock-server', name: 'mockserver-netty', version: '5.3.0')
+    testCompile(group: 'io.rest-assured', name: 'rest-assured', version: '3.0.7')
+
+    testRuntime(group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.1.0')
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events = ["started", "skipped", "failed", "passed"]
+        showStandardStreams = true
+    }
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+jar {
+    manifest {
+        attributes('Implementation-Title': project.name, 'Implementation-Version': project.version)
+    }
+}
+
+sourcesJar {
+    manifest {
+        attributes('Implementation-Title': project.name, 'Implementation-Version': project.version)
+    }
+}
+
+javadocJar {
+    manifest {
+        attributes('Implementation-Title': project.name, 'Implementation-Version': project.version)
+    }
+}
+
+artifacts {
+    archives javadocJar
+    archives sourcesJar
+}
+
+apply plugin: 'com.jfrog.bintray'
+bintray {
+    user = project.hasProperty('bintrayUser') ? project.bintrayUser : System.getenv('BINTRAY_USER')
+    key = project.hasProperty('bintrayKey') ? project.bintrayKey : System.getenv('BINTRAY_KEY')
+    configurations = ['archives']
+
+    pkg {
+        repo = 'maven'
+        name = project.name
+        desc = 'Metrics reporters, which report to Prometheus'
+        websiteUrl = 'https://github.com/honourednihilist/prometheus-metrics-reporter'
+        issueTrackerUrl = "${bintray.pkg.websiteUrl}/issues"
+        vcsUrl = "${bintray.pkg.websiteUrl}.git"
+        licenses = ['MIT']
+        labels = ['metrics', 'prometheus', 'java']
+        publicDownloadNumbers = true
+
+        version {
+            name = project.version
+            released = new Date()
+            vcsTag = project.version
+        }
+    }
+}
+
+apply plugin: 'maven'
+install {
+    repositories.mavenInstaller {
+        pom {
+            project {
+                groupId = project.group
+                artifactId = project.name
+                name = project.name
+                description = bintray.pkg.desc
+
+                url = bintray.pkg.websiteUrl
+
+                licenses {
+                    license {
+                        name = 'MIT'
+                        url = "${bintray.pkg.websiteUrl}/blob/${project.version}/LICENSE"
+                    }
+                }
+
+                developers {
+                    developer {
+                        id = 'honourednihilist'
+                        name 'Vladislav Nikolaev'
+                    }
+
+                }
+
+                scm {
+                    connection = bintray.pkg.vcsUrl
+                    developerConnection = bintray.pkg.vcsUrl
+                    url = bintray.pkg.websiteUrl
+                }
+            }
+        }
+    }
+}
+
+gradle.buildFinished {
+    println("\nFinished: " + new Date())
+}
